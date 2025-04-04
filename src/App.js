@@ -14,21 +14,14 @@ function Board({ xIsNext, squares, onPlay }) {
       return;
     }
     const nextSquares = squares.slice();
-    if (xIsNext) {
-      nextSquares[i] = "X";
-    } else {
-      nextSquares[i] = "O";
-    }
+    nextSquares[i] = xIsNext ? "X" : "O";
     onPlay(nextSquares);
   }
 
   const winner = calculateWinner(squares);
-  let status;
-  if (winner) {
-    status = "Winner: " + winner;
-  } else {
-    status = "Next player: " + (xIsNext ? "X" : "O");
-  }
+  const status = winner
+    ? "Winner: " + winner
+    : "Next player: " + (xIsNext ? "X" : "O");
 
   return (
     <>
@@ -65,22 +58,23 @@ export default function Game() {
     setXIsNext(!xIsNext);
   }
 
+  function handleReset() {
+    setHistory([Array(9).fill(null)]);
+    setCurrentMove(0);
+    setXIsNext(true);
+  }
+
   function jumpTo(nextMove) {
     setCurrentMove(nextMove);
     setXIsNext(nextMove % 2 === 0);
   }
 
   const moves = history.map((squares, move) => {
-    let description;
-    if (move > 0) {
-      description = "Go to move #   " + move;
-    } else {
-      description = "Go to game start";
-    }
+    if (move === 0) return null; // Don't render move 0
     return (
       <li key={move}>
         <button className="Hbutton" onClick={() => jumpTo(move)}>
-          {description}
+          Go to move # {move}
         </button>
       </li>
     );
@@ -89,9 +83,18 @@ export default function Game() {
   return (
     <div className="game">
       <div className="game-board">
-        <Board xIsNext={xIsNext} squares={currentSquares} onPlay={handlePlay} />
+        <Board
+          xIsNext={xIsNext}
+          squares={currentSquares}
+          onPlay={handlePlay}
+        />
       </div>
       <div className="game-info">
+        {currentMove > 0 && (
+          <button className="reset-button" onClick={handleReset}>
+            Reset
+          </button>
+        )}
         <ol>{moves}</ol>
       </div>
     </div>
@@ -107,7 +110,7 @@ function calculateWinner(squares) {
     [1, 4, 7],
     [2, 5, 8],
     [0, 4, 8],
-    [2, 4, 6]
+    [2, 4, 6],
   ];
   for (let i = 0; i < lines.length; i++) {
     const [a, b, c] = lines[i];

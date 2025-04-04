@@ -104,3 +104,23 @@ body {
   margin-top: 1px;
   padding-top: 1px;
 }
+.reset-button {
+  border: 2px solid #cc0000;
+  border-radius: 10px;
+  background-color: #ff4d4d;
+  color: white;
+  width: 150px;
+  font-weight: bold;
+  margin-bottom: 10px;
+  padding: 5px 0;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.reset-button:hover {
+  background-color: #e60000;
+}
+.reset-container {
+  margin-top: 15px;
+  text-align: center;
+}
