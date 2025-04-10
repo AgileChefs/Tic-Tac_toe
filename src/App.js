@@ -1,4 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import io from "socket.io-client";
+import "./styles.css";
+
+const socket = io("http://localhost:5000");
 
 function Square({ value, onSquareClick }) {
   return (
@@ -16,6 +20,7 @@ function Board({ xIsNext, squares, onPlay }) {
     const nextSquares = squares.slice();
     nextSquares[i] = xIsNext ? "X" : "O";
     onPlay(nextSquares);
+    socket.emit("makeMove", { room: localStorage.getItem("room"), squares: nextSquares });
   }
 
   const winner = calculateWinner(squares);
@@ -45,13 +50,39 @@ function Board({ xIsNext, squares, onPlay }) {
   );
 }
 
-export default function Game() {
+export default function App() {
   const [xIsNext, setXIsNext] = useState(true);
   const [history, setHistory] = useState([Array(9).fill(null)]);
   const [currentMove, setCurrentMove] = useState(0);
   const currentSquares = history[currentMove];
+  const [playerSymbol, setPlayerSymbol] = useState(null);
+
+  useEffect(() => {
+    socket.on("startGame", ({ room, playerX, playerO }) => {
+      localStorage.setItem("room", room);
+      const symbol = socket.id === playerX ? "X" : "O";
+      setPlayerSymbol(symbol);
+      alert(`Game started! You are "${symbol}"`);
+    });
+
+    socket.on("updateBoard", (nextSquares) => {
+      handlePlayFromServer(nextSquares);
+    });
+
+    return () => {
+      socket.off("startGame");
+      socket.off("updateBoard");
+    };
+  }, []);
 
   function handlePlay(nextSquares) {
+    const nextHistory = [...history.slice(0, currentMove + 1), nextSquares];
+    setHistory(nextHistory);
+    setCurrentMove(nextHistory.length - 1);
+    setXIsNext(!xIsNext);
+  }
+
+  function handlePlayFromServer(nextSquares) {
     const nextHistory = [...history.slice(0, currentMove + 1), nextSquares];
     setHistory(nextHistory);
     setCurrentMove(nextHistory.length - 1);
@@ -64,17 +95,17 @@ export default function Game() {
     setXIsNext(true);
   }
 
-  function jumpTo(nextMove) {
-    setCurrentMove(nextMove);
-    setXIsNext(nextMove % 2 === 0);
+  function jumpTo(move) {
+    setCurrentMove(move);
+    setXIsNext(move % 2 === 0);
   }
 
   const moves = history.map((squares, move) => {
-    if (move === 0) return null; // Don't render move 0
+    if (move === 0) return null;
     return (
       <li key={move}>
         <button className="Hbutton" onClick={() => jumpTo(move)}>
-          Go to move # {move}
+          Go to move #{move}
         </button>
       </li>
     );
@@ -83,13 +114,10 @@ export default function Game() {
   return (
     <div className="game">
       <div className="game-board">
-        <Board
-          xIsNext={xIsNext}
-          squares={currentSquares}
-          onPlay={handlePlay}
-        />
+        <Board xIsNext={xIsNext} squares={currentSquares} onPlay={handlePlay} />
       </div>
       <div className="game-info">
+        <p>You are: <strong>{playerSymbol || "Waiting..."}</strong></p>
         {currentMove > 0 && (
           <button className="reset-button" onClick={handleReset}>
             Reset
@@ -112,11 +140,11 @@ function calculateWinner(squares) {
     [0, 4, 8],
     [2, 4, 6],
   ];
-  for (let i = 0; i < lines.length; i++) {
-    const [a, b, c] = lines[i];
+  for (let [a, b, c] of lines) {
     if (squares[a] && squares[a] === squares[b] && squares[a] === squares[c]) {
       return squares[a];
     }
   }
   return null;
 }
+

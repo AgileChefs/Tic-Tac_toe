@@ -117,6 +117,46 @@ body {
   transition: background-color 0.3s;
 }
 
+.square {
+  width: 60px;
+  height: 60px;
+  font-size: 24px;
+  font-weight: bold;
+  margin: 4px;
+  cursor: pointer;
+}
+
+.board-row {
+  display: flex;
+}
+
+.winning-square {
+  background-color: #ffeb3b;
+  color: black;
+}
+
+.status {
+  margin-bottom: 12px;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.reset-button {
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  background-color: crimson;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-weight: bold;
+}
+
+.Hbutton {
+  margin-top: 6px;
+  padding: 6px 10px;
+}
+
+
 .reset-button:hover {
   background-color: #e60000;
 }
