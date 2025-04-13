@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import io from "socket.io-client";
 import "./styles.css";
 
-const socket = io("tictactoebackend-fbcreghvczeddkat.uaenorth-01.azurewebsites.net", {
+const socket = io("tictactoebackend-fbcreghvczeddkat.uaenorth-01.azurewebsites.net:8080", {
   transports: ["websocket"],
 });
 function Square({ value, onSquareClick }) {
