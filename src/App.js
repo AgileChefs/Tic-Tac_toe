@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import "./styles.css";
 
-const API_URL = "https://tictactoebackend-fbcreghvczeddkat.uaenorth-01.azurewebsites.net"; // Replace with your deployed endpoint
+const API_URL = "https://ticbackend.azurewebsites.net"; // Replace with your deployed endpoint
 
 function Square({ value, onSquareClick }) {
   return <button className="square" onClick={onSquareClick}>{value}</button>;
@@ -69,19 +69,28 @@ export default function App() {
   }, [roomId, currentSquares]);
 
   function handlePlay(nextSquares) {
-    const nextHistory = [...history.slice(0, currentMove + 1), nextSquares];
-    setHistory(nextHistory);
-    setCurrentMove(nextHistory.length - 1);
-    setXIsNext(!xIsNext);
+  const nextHistory = [...history.slice(0, currentMove + 1), nextSquares];
+  setHistory(nextHistory);
+  setCurrentMove(nextHistory.length - 1);
+  setXIsNext(!xIsNext);
 
-    if (roomId) {
-      fetch(`${API_URL}/move`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ roomId, board: nextSquares }),
-      });
-    }
+  if (roomId) {
+    fetch(`${API_URL}/move`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ roomId, board: nextSquares, playerId: playerSymbol }),
+    })
+    .then(res => {
+      if (!res.ok) {
+        return res.json().then(err => { throw new Error(err.error || "Something went wrong"); });
+      }
+    })
+    .catch(error => {
+      alert(error.message); // Display the error to the user
+    });
   }
+}
+
 
   function handlePlayFromServer(nextSquares) {
     const nextHistory = [...history.slice(0, currentMove + 1), nextSquares];
