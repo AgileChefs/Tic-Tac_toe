@@ -50,9 +50,12 @@ export default function App() {
       .then(res => res.json())
       .then(data => {
         setPlayerSymbol(data.symbol);
-        if (data.roomId) setRoomId(data.roomId);
-      });
+        if (data.roomId) setRoomId(data.roomId); // Ensure this is set here
+      })
+      .catch(err => alert(err.message));
+  }, []); // Make sure this runs only once on mount
 
+  useEffect(() => {
     const interval = setInterval(() => {
       if (roomId) {
         fetch(`${API_URL}/state/${roomId}`)
@@ -69,28 +72,27 @@ export default function App() {
   }, [roomId, currentSquares]);
 
   function handlePlay(nextSquares) {
-  const nextHistory = [...history.slice(0, currentMove + 1), nextSquares];
-  setHistory(nextHistory);
-  setCurrentMove(nextHistory.length - 1);
-  setXIsNext(!xIsNext);
+    const nextHistory = [...history.slice(0, currentMove + 1), nextSquares];
+    setHistory(nextHistory);
+    setCurrentMove(nextHistory.length - 1);
+    setXIsNext(!xIsNext);
 
-  if (roomId) {
-    fetch(`${API_URL}/move`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ roomId, board: nextSquares, playerId: playerSymbol }),
-    })
-    .then(res => {
-      if (!res.ok) {
-        return res.json().then(err => { throw new Error(err.error || "Something went wrong"); });
-      }
-    })
-    .catch(error => {
-      alert(error.message); // Display the error to the user
-    });
+    if (roomId) {
+      fetch(`${API_URL}/move`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomId, board: nextSquares, playerId: playerSymbol }),
+      })
+      .then(res => {
+        if (!res.ok) {
+          return res.json().then(err => { throw new Error(err.error || "Something went wrong"); });
+        }
+      })
+      .catch(error => {
+        alert(error.message); // Display the error to the user
+      });
+    }
   }
-}
-
 
   function handlePlayFromServer(nextSquares) {
     const nextHistory = [...history.slice(0, currentMove + 1), nextSquares];
