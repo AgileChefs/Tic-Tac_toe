@@ -1,149 +1,89 @@
-import { useState, useEffect } from "react";
-import io from "socket.io-client";
+import { useEffect, useState } from "react";
 import "./styles.css";
 
-const socket = io("http://localhost:5000");
-
-function Square({ value, onSquareClick }) {
-  return (
-    <button className="square" onClick={onSquareClick}>
-      {value}
-    </button>
-  );
-}
-
-function Board({ xIsNext, squares, onPlay }) {
-  function handleClick(i) {
-    if (calculateWinner(squares) || squares[i]) {
-      return;
-    }
-    const nextSquares = squares.slice();
-    nextSquares[i] = xIsNext ? "X" : "O";
-    onPlay(nextSquares);
-    socket.emit("makeMove", { room: localStorage.getItem("room"), squares: nextSquares });
-  }
-
-  const winner = calculateWinner(squares);
-  const status = winner
-    ? "Winner: " + winner
-    : "Next player: " + (xIsNext ? "X" : "O");
-
-  return (
-    <>
-      <div className="status">{status}</div>
-      <div className="board-row">
-        <Square value={squares[0]} onSquareClick={() => handleClick(0)} />
-        <Square value={squares[1]} onSquareClick={() => handleClick(1)} />
-        <Square value={squares[2]} onSquareClick={() => handleClick(2)} />
-      </div>
-      <div className="board-row">
-        <Square value={squares[3]} onSquareClick={() => handleClick(3)} />
-        <Square value={squares[4]} onSquareClick={() => handleClick(4)} />
-        <Square value={squares[5]} onSquareClick={() => handleClick(5)} />
-      </div>
-      <div className="board-row">
-        <Square value={squares[6]} onSquareClick={() => handleClick(6)} />
-        <Square value={squares[7]} onSquareClick={() => handleClick(7)} />
-        <Square value={squares[8]} onSquareClick={() => handleClick(8)} />
-      </div>
-    </>
-  );
-}
+const socket = new WebSocket("ws://localhost:8080");
 
 export default function App() {
-  const [xIsNext, setXIsNext] = useState(true);
-  const [history, setHistory] = useState([Array(9).fill(null)]);
-  const [currentMove, setCurrentMove] = useState(0);
-  const currentSquares = history[currentMove];
+  const [board, setBoard] = useState(Array(9).fill(null));
   const [playerSymbol, setPlayerSymbol] = useState(null);
+  const [turn, setTurn] = useState("X");
+  const [winner, setWinner] = useState(null);
+  const [winningLine, setWinningLine] = useState([]);
+  const [canReset, setCanReset] = useState(false);
 
   useEffect(() => {
-    socket.on("startGame", ({ room, playerX, playerO }) => {
-      localStorage.setItem("room", room);
-      const symbol = socket.id === playerX ? "X" : "O";
-      setPlayerSymbol(symbol);
-      alert(Game started! You are "${symbol}");
-    });
-
-    socket.on("updateBoard", (nextSquares) => {
-      handlePlayFromServer(nextSquares);
-    });
-
-    return () => {
-      socket.off("startGame");
-      socket.off("updateBoard");
+    socket.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.type === "init") {
+        setPlayerSymbol(data.symbol);
+      } else if (data.type === "update") {
+        setBoard(data.board);
+        setTurn(data.turn);
+        setWinner(data.winner);
+        setWinningLine(data.winningLine || []);
+        setCanReset(data.winner !== null);
+      } else if (data.type === "reset") {
+        setBoard(Array(9).fill(null));
+        setTurn("X");
+        setWinner(null);
+        setWinningLine([]);
+        setCanReset(false);
+      }
     };
   }, []);
 
-  function handlePlay(nextSquares) {
-    const nextHistory = [...history.slice(0, currentMove + 1), nextSquares];
-    setHistory(nextHistory);
-    setCurrentMove(nextHistory.length - 1);
-    setXIsNext(!xIsNext);
-  }
-
-  function handlePlayFromServer(nextSquares) {
-    const nextHistory = [...history.slice(0, currentMove + 1), nextSquares];
-    setHistory(nextHistory);
-    setCurrentMove(nextHistory.length - 1);
-    setXIsNext(!xIsNext);
+  function handleClick(i) {
+    if (winner) return;
+    if (board[i]) return;
+    if (turn !== playerSymbol) {
+      alert("It's not your turn!");
+      return;
+    }
+    socket.send(JSON.stringify({ type: "move", index: i }));
   }
 
   function handleReset() {
-    setHistory([Array(9).fill(null)]);
-    setCurrentMove(0);
-    setXIsNext(true);
+    if (canReset) {
+      socket.send(JSON.stringify({ type: "reset" }));
+    }
   }
 
-  function jumpTo(move) {
-    setCurrentMove(move);
-    setXIsNext(move % 2 === 0);
-  }
-
-  const moves = history.map((squares, move) => {
-    if (move === 0) return null;
+  const renderSquare = (i) => {
+    const value = board[i];
+    const style = {
+      color: value === "X" ? "red" : value === "O" ? "green" : "black",
+      backgroundColor: winningLine.includes(i) ? "#baffc9" : "white",
+    };
     return (
-      <li key={move}>
-        <button className="Hbutton" onClick={() => jumpTo(move)}>
-          Go to move #{move}
-        </button>
-      </li>
+      <button key={i} className="square" onClick={() => handleClick(i)} style={style}>
+        {value}
+      </button>
     );
-  });
+  };
 
   return (
     <div className="game">
-      <div className="game-board">
-        <Board xIsNext={xIsNext} squares={currentSquares} onPlay={handlePlay} />
+      <h1>Tic Tac Toe</h1>
+      {playerSymbol && <p>You are <strong style={{ color: playerSymbol === "X" ? "red" : "green" }}>{playerSymbol}</strong></p>}
+      {winner ? (
+        <h2 style={{ color: "purple" }}>Winner: {winner}</h2>
+      ) : (
+        <h2>Turn: {turn}</h2>
+      )}
+      <div className="board">
+        {[0, 3, 6].map((row) => (
+          <div key={row} className="board-row">
+            {[0, 1, 2].map((col) => renderSquare(row + col))}
+          </div>
+        ))}
       </div>
-      <div className="game-info">
-        <p>You are: <strong>{playerSymbol || "Waiting..."}</strong></p>
-        {currentMove > 0 && (
-          <button className="reset-button" onClick={handleReset}>
-            Reset
-          </button>
-        )}
-        <ol>{moves}</ol>
-      </div>
+      <button
+        className="reset-button"
+        onClick={handleReset}
+        disabled={!canReset}
+      >
+        Reset Game
+      </button>
     </div>
   );
-}
-
-function calculateWinner(squares) {
-  const lines = [
-    [0, 1, 2],
-    [3, 4, 5],
-    [6, 7, 8],
-    [0, 3, 6],
-    [1, 4, 7],
-    [2, 5, 8],
-    [0, 4, 8],
-    [2, 4, 6],
-  ];
-  for (let [a, b, c] of lines) {
-    if (squares[a] && squares[a] === squares[b] && squares[a] === squares[c]) {
-      return squares[a];
-    }
-  }
-  return null;
 }
